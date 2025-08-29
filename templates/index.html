@@ -1,0 +1,699 @@
+{% extends "base.html" %}
+
+{% block title %}MCP Client Demo - Strands{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mcp-agent-loop.css') }}">
+<style>
+    .mcp-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: var(--space-4);
+        height: calc(100vh - 80px);
+        max-height: calc(100vh - 80px);
+    }
+    
+    .mcp-chat-section {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+    
+    /* Override main.css fixed heights for proper flex layout */
+    .mcp-chat-section .chat-container {
+        height: auto !important;
+        max-height: none !important;
+        flex: 1;
+        min-height: 0; /* Important for flex children */
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        border: none;
+        position: relative;
+        padding: 0.5rem !important; /* Override default padding */
+    }
+    
+    /* Prevent flex children from shrinking */
+    .mcp-chat-section .chat-container > * {
+        flex-shrink: 0;
+    }
+    
+    /* Messages wrapper for proper scrolling */
+    .mcp-chat-section .messages-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding-bottom: 1rem;
+    }
+    
+    /* When empty, center the welcome message */
+    .mcp-chat-section .chat-container:has(.chat-welcome:only-child) {
+        justify-content: center;
+    }
+    
+    /* When messages exist, align from top */
+    .mcp-chat-section .chat-container:not(:has(.chat-welcome:only-child)) {
+        justify-content: flex-start;
+    }
+    
+    .mcp-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+        height: 100%;
+        overflow-y: auto;
+    }
+    
+    .server-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-primary);
+        border-radius: var(--radius-md);
+        padding: var(--space-4);
+        transition: all var(--transition-base);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .server-card.connected {
+        border-color: var(--color-success);
+        background: linear-gradient(135deg, 
+            var(--bg-secondary) 0%, 
+            rgba(5, 150, 105, 0.05) 100%);
+    }
+    
+    .server-card.connecting {
+        border-color: var(--color-warning);
+        animation: pulse-border 2s infinite;
+    }
+    
+    @keyframes pulse-border {
+        0%, 100% { border-color: var(--color-warning); opacity: 1; }
+        50% { border-color: var(--color-warning); opacity: 0.5; }
+    }
+    
+    .server-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-1) var(--space-3);
+        border-radius: var(--radius-base);
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-medium);
+    }
+    
+    .server-status-badge.connected {
+        background: rgba(5, 150, 105, 0.1);
+        color: var(--color-success);
+    }
+    
+    .server-status-badge.disconnected {
+        background: var(--bg-tertiary);
+        color: var(--text-tertiary);
+    }
+    
+    .server-status-badge.connecting {
+        background: rgba(217, 119, 6, 0.1);
+        color: var(--color-warning);
+    }
+    
+    .server-status-badge.error {
+        background: rgba(220, 38, 38, 0.1);
+        color: var(--color-error);
+    }
+    
+    .tool-pill {
+        display: inline-block;
+        padding: var(--space-1) var(--space-2);
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-sm);
+        font-size: var(--font-size-xs);
+        margin: var(--space-1);
+    }
+    
+    .activity-monitor {
+        background: var(--bg-secondary);
+        border-radius: var(--radius-md);
+        padding: var(--space-4);
+        max-height: 200px;
+        overflow-y: auto;
+        flex-shrink: 0; /* Don't let it compress */
+    }
+    
+    .activity-item {
+        padding: var(--space-3);
+        margin-bottom: var(--space-2);
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-base);
+        border-left: 3px solid var(--border-primary);
+        transition: all var(--transition-fast);
+    }
+    
+    .activity-item.executing {
+        border-left-color: var(--color-accent);
+        animation: pulse-activity 1s infinite;
+    }
+    
+    .activity-item.completed {
+        border-left-color: var(--color-success);
+    }
+    
+    .activity-item.failed {
+        border-left-color: var(--color-error);
+    }
+    
+    @keyframes pulse-activity {
+        0%, 100% { transform: translateX(0); }
+        50% { transform: translateX(2px); }
+    }
+    
+    .system-prompt-section {
+        transition: all var(--transition-base);
+    }
+    
+    #systemPromptPreview {
+        word-wrap: break-word;
+        white-space: pre-wrap;
+        line-height: 1.5;
+    }
+    
+    #systemPromptEditor {
+        animation: fadeIn var(--transition-fast);
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Server Configuration Modal Styles */
+    .config-section {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-primary);
+    }
+    
+    .config-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    
+    .config-label {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .config-value {
+        background: var(--bg-tertiary);
+        padding: 0.75rem;
+        border-radius: var(--radius-base);
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        word-break: break-all;
+        white-space: pre-wrap;
+    }
+    
+    .config-value.empty {
+        color: var(--text-tertiary);
+        font-style: italic;
+    }
+    
+    .server-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    .tool-execution-visual {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-3);
+        background: linear-gradient(90deg, 
+            rgba(37, 99, 235, 0.1) 0%, 
+            rgba(37, 99, 235, 0) 100%);
+        border-radius: var(--radius-base);
+        margin: var(--space-2) 0;
+    }
+    
+    .tool-icon-animated {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--color-accent);
+        color: white;
+        border-radius: 50%;
+        animation: rotate-scale 2s infinite;
+    }
+    
+    @keyframes rotate-scale {
+        0%, 100% { transform: rotate(0deg) scale(1); }
+        25% { transform: rotate(90deg) scale(1.1); }
+        50% { transform: rotate(180deg) scale(1); }
+        75% { transform: rotate(270deg) scale(1.1); }
+    }
+    
+    .message-tool-call {
+        background: linear-gradient(135deg, 
+            rgba(37, 99, 235, 0.05) 0%, 
+            rgba(37, 99, 235, 0.02) 100%);
+        border: 1px solid rgba(37, 99, 235, 0.2);
+        border-radius: var(--radius-md);
+        padding: var(--space-3);
+        margin: var(--space-2) 0;
+    }
+    
+    .connection-animation {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, 
+            transparent, 
+            var(--color-accent), 
+            transparent);
+        animation: slide 2s infinite;
+    }
+    
+    @keyframes slide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+    
+    /* Model Selector Styles */
+    .model-select {
+        max-width: 300px;
+        min-width: 200px;
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--font-size-sm);
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-primary);
+        color: var(--text-primary);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+    }
+    
+    .model-select:hover {
+        background-color: var(--hover-bg);
+        border-color: var(--color-accent);
+    }
+    
+    .model-select:focus {
+        outline: none;
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="mb-2">ROAS Agent Demo</h1>
+        <p class="text-secondary">
+            Experience the power of Model Context Protocol (MCP) in our Return on Ad Spend (ROAS) Agent
+        </p>
+    </div>
+    
+    <!-- Main Layout -->
+    <div class="mcp-layout">
+        <!-- Chat Section -->
+        <div class="mcp-chat-section">
+            <!-- Chat Header -->
+            <div class="chat-header p-4 border-b border-primary">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="status-indicator status-online" id="bedrockStatus">
+                            <i class="bi bi-circle-fill"></i>
+                            <span>Agent Ready</span>
+                        </div>
+                        <select id="modelSelector" class="form-select model-select" onchange="changeModel(this.value)">
+                            <option value="amazon.nova-lite-v1:0" selected>amazon.nova-lite-v1:0</option>
+                            <option value="us.amazon.nova-pro-v1:0">us.amazon.nova-pro-v1:0</option>
+                            <option value="us.anthropic.claude-3-7-sonnet-20250219-v1:0">us.anthropic.claude-3-7-sonnet-20250219-v1:0</option>
+                            <option value="us.anthropic.claude-sonnet-4-20250514-v1:0">us.anthropic.claude-sonnet-4-20250514-v1:0</option>
+                            <option value="us.anthropic.claude-opus-4-1-20250805-v1:0">us.anthropic.claude-opus-4-1-20250805-v1:0</option>
+                            <option value="us.deepseek.r1-v1:0">us.deepseek.r1-v1:0</option>
+                            <option value="us.meta.llama4-maverick-17b-instruct-v1:0">us.meta.llama4-maverick-17b-instruct-v1:0</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn-ghost btn-sm" onclick="clearChat()" title="Clear Chat">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        <button class="btn-ghost btn-sm" onclick="toggleToolUse()" id="toolToggle" title="Toggle MCP Tools">
+                            <i class="bi bi-tools"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Messages Container -->
+            <div class="chat-container flex-1 p-2" id="chatContainer">
+                <div class="chat-welcome">
+                    <div class="chat-welcome-icon">
+                        <i class="bi bi-plugin"></i>
+                    </div>
+                    <h3>MCP-Powered Chat</h3>
+                    <p class="text-secondary">
+                        Chat with Nova Lite while leveraging connected MCP servers
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Tool Activity Monitor -->
+            <div class="activity-monitor hidden" id="activityMonitor" style="display: none;">
+                <div class="flex justify-between items-center mb-3">
+                    <h4 class="text-sm font-medium">Tool Activity</h4>
+                    <button class="btn-ghost btn-xs" onclick="toggleActivityMonitor()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <div id="activityList"></div>
+            </div>
+            
+            <!-- Chat Input -->
+            <div class="chat-input-container p-4 border-t border-primary" style="flex-shrink: 0;">
+                <div class="chat-input-wrapper">
+                    <textarea id="messageInput" 
+                              class="chat-input form-textarea" 
+                              placeholder="Ask anything... MCP tools are ready!"
+                              rows="1"></textarea>
+                    <button class="btn-primary btn-icon" id="sendButton" onclick="sendMessage()">
+                        <i class="bi bi-send"></i>
+                    </button>
+                </div>
+                <div class="chat-input-help">
+                    <small class="text-tertiary">
+                        <span id="connectedToolsCount">0</span> tools available • 
+                        <kbd>Ctrl + Enter</kbd> to send
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="mcp-sidebar">
+            <!-- Add Server Button -->
+            <button class="btn-primary w-full" onclick="showAddServerModal()">
+                <i class="bi bi-plus-circle mr-2"></i>
+                Add MCP Server
+            </button>
+            
+            <!-- System Prompt Configuration -->
+            <div class="container">
+                <div class="container-header">
+                    <h3 class="container-title">Agent Instructions</h3>
+                    <button class="btn-ghost btn-xs" onclick="showAgentInstructionsModal()" title="Edit Agent Instructions">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                </div>
+                <div id="systemPromptPreview" class="text-sm text-secondary bg-tertiary rounded-md" style="min-height: 150px; max-height: 250px; overflow-y: auto; padding: 12px; white-space: pre-line; word-wrap: break-word; text-align: left;">
+                    <span id="systemPromptText" style="display: block;">You are a helpful AI assistant with access to MCP tools.</span>
+                </div>
+            </div>
+            
+            <!-- Connected Servers -->
+            <div class="container">
+                <div class="container-header">
+                    <h3 class="container-title">Netflix MCP Gateway</h3>
+                    <span class="text-tertiary text-sm" id="serverCount">0 connected</span>
+                </div>
+                <div id="serverList" class="space-y-3">
+                    <!-- Server cards will be dynamically added here -->
+                </div>
+            </div>
+            
+            <!-- Statistics -->
+            <div class="container">
+                <div class="container-header">
+                    <h3 class="container-title">Session Stats</h3>
+                </div>
+                <div class="stats-sidebar">
+                    <div class="stat-sidebar-item">
+                        <div class="stat-sidebar-value" id="messageCount">0</div>
+                        <div class="stat-sidebar-label">Messages</div>
+                    </div>
+                    <div class="stat-sidebar-item">
+                        <div class="stat-sidebar-value" id="toolCallCount">0</div>
+                        <div class="stat-sidebar-label">Tool Calls</div>
+                    </div>
+                    <div class="stat-sidebar-item">
+                        <div class="stat-sidebar-value" id="activeServers">0</div>
+                        <div class="stat-sidebar-label">Active Servers</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Server Config Modal -->
+<div class="modal" id="serverConfigModal" style="display: none;">
+    <div class="modal-backdrop" onclick="hideServerConfigModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Server Configuration</h2>
+            <button class="btn-ghost btn-sm" onclick="hideServerConfigModal()">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="serverConfigContent">
+            <!-- Configuration details will be inserted here -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="hideServerConfigModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Server Modal -->
+<div class="modal" id="editServerModal" style="display: none;">
+    <div class="modal-backdrop" onclick="hideEditServerModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit MCP Server</h2>
+            <button class="btn-ghost btn-sm" onclick="hideEditServerModal()">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="editServerForm">
+                <input type="hidden" id="editServerId">
+                <div class="form-group">
+                    <label class="form-label">Server Name</label>
+                    <input type="text" 
+                           class="form-input" 
+                           id="editServerName" 
+                           placeholder="e.g., Filesystem Server"
+                           required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-textarea" 
+                              id="editServerDescription" 
+                              rows="2"
+                              placeholder="What does this server do?"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Command</label>
+                    <input type="text" 
+                           class="form-input" 
+                           id="editServerCommand" 
+                           placeholder='["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"]'
+                           required>
+                    <small class="text-tertiary">JSON array format (include all arguments)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Additional Arguments (Optional)</label>
+                    <input type="text" 
+                           class="form-input" 
+                           id="editServerArgs" 
+                           placeholder='[]'>
+                    <small class="text-tertiary">JSON array format (usually empty)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Environment Variables (Optional)</label>
+                    <textarea class="form-textarea" 
+                              id="editServerEnv" 
+                              rows="3"
+                              placeholder='{"GITHUB_TOKEN": "ghp_xxx", "API_KEY": "sk-xxx"}'></textarea>
+                    <small class="text-tertiary">JSON object format for API keys and config</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" id="editServerCategory">
+                        <option value="General">General</option>
+                        <option value="File System">File System</option>
+                        <option value="Database">Database</option>
+                        <option value="Search">Search</option>
+                        <option value="Development">Development</option>
+                        <option value="Memory">Memory</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-checkbox">
+                        <input type="checkbox" id="editAutoConnect">
+                        <span>Auto-connect on startup</span>
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="hideEditServerModal()">Cancel</button>
+            <button class="btn-primary" onclick="updateServer()">
+                <i class="bi bi-check-circle mr-2"></i>
+                Update Server
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Agent Instructions Modal -->
+<div class="modal" id="agentInstructionsModal" style="display: none;">
+    <div class="modal-backdrop" onclick="hideAgentInstructionsModal()"></div>
+    <div class="modal-content" style="max-width: 90vw; width: 90vw; max-height: 85vh;">
+        <div class="modal-header">
+            <h2 class="modal-title">Edit Agent Instructions</h2>
+            <button class="btn-ghost btn-sm" onclick="hideAgentInstructionsModal()">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="max-height: calc(85vh - 140px); overflow-y: auto;">
+            <div class="form-group">
+                <label class="form-label">System Prompt</label>
+                <small class="text-tertiary block mb-2">Define how the agent should behave and respond</small>
+                <textarea id="modalSystemPromptInput" 
+                          class="form-textarea" 
+                          rows="25"
+                          placeholder="Enter the agent instructions/system prompt here..."
+                          style="font-family: 'SF Mono', Monaco, 'Courier New', monospace; font-size: 14px;">You are a helpful AI assistant with access to MCP tools.</textarea>
+            </div>
+            <div class="mt-3">
+                <small class="text-tertiary">
+                    <i class="bi bi-info-circle mr-1"></i>
+                    These instructions define the agent's personality, capabilities, and behavior patterns.
+                </small>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="hideAgentInstructionsModal()">
+                Cancel
+            </button>
+            <button class="btn-primary" onclick="saveAgentInstructions()">
+                <i class="bi bi-check-circle mr-2"></i>
+                Save Instructions
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Server Modal -->
+<div class="modal" id="addServerModal" style="display: none;">
+    <div class="modal-backdrop" onclick="hideAddServerModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add MCP Server</h2>
+            <button class="btn-ghost btn-sm" onclick="hideAddServerModal()">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="addServerForm">
+                <div class="form-group">
+                    <label class="form-label">Server Name</label>
+                    <input type="text" 
+                           class="form-input" 
+                           id="serverName" 
+                           placeholder="e.g., Filesystem Server"
+                           required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-textarea" 
+                              id="serverDescription" 
+                              rows="2"
+                              placeholder="What does this server do?"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Command</label>
+                    <input type="text" 
+                           class="form-input" 
+                           id="serverCommand" 
+                           placeholder='["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"]'
+                           required>
+                    <small class="text-tertiary">JSON array format (include all arguments)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Additional Arguments (Optional)</label>
+                    <input type="text" 
+                           class="form-input" 
+                           id="serverArgs" 
+                           placeholder='[]'>
+                    <small class="text-tertiary">JSON array format (usually empty)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Environment Variables (Optional)</label>
+                    <textarea class="form-textarea" 
+                              id="serverEnv" 
+                              rows="3"
+                              placeholder='{"GITHUB_TOKEN": "ghp_xxx", "API_KEY": "sk-xxx"}'></textarea>
+                    <small class="text-tertiary">JSON object format for API keys and config</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" id="serverCategory">
+                        <option value="General">General</option>
+                        <option value="File System">File System</option>
+                        <option value="Database">Database</option>
+                        <option value="Search">Search</option>
+                        <option value="Development">Development</option>
+                        <option value="Memory">Memory</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-checkbox">
+                        <input type="checkbox" id="autoConnect">
+                        <span>Auto-connect on startup</span>
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="hideAddServerModal()">Cancel</button>
+            <button class="btn-primary" onclick="addServer()">
+                <i class="bi bi-plus-circle mr-2"></i>
+                Add Server
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/mcp-agent-loop.js') }}"></script>
+{% endblock %}

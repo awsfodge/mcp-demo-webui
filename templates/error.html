@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Error - MCP Demo{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="error-container" style="text-align: center; padding: 4rem 2rem;">
+        <i class="bi bi-exclamation-triangle" style="font-size: 4rem; color: var(--color-error);"></i>
+        <h1 style="margin-top: 1rem;">Oops!</h1>
+        <p class="text-secondary" style="font-size: 1.2rem; margin: 1rem 0;">
+            {{ error or "Something went wrong" }}
+        </p>
+        <a href="/" class="btn-primary" style="margin-top: 2rem;">
+            <i class="bi bi-house mr-2"></i>
+            Back to Home
+        </a>
+    </div>
+</div>
+{% endblock %}
