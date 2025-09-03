@@ -121,45 +121,32 @@ export AWS_PROFILE=your-profile-name
 ### Environment Variables (.env)
 
 ```bash
-# === Flask Configuration ===
-SECRET_KEY=your-secret-key-here-change-in-production
-DEBUG=True                        # Set to False in production
-FLASK_ENV=development            # Options: development, production
-HOST=0.0.0.0                     # Bind address
-PORT=5000                        # Port number
+# Flask Configuration
+SECRET_KEY=change-this-to-a-secure-random-string
+DEBUG=True
+FLASK_ENV=development
+PORT=5000
 
-# === AWS Configuration ===
-AWS_DEFAULT_REGION=us-east-1    # Primary AWS region for Bedrock
-AWS_PROFILE=default              # AWS profile name (optional)
-AWS_RETRY_ATTEMPTS=3             # Number of retry attempts for AWS calls
-AWS_RETRY_MODE=adaptive          # Retry mode: legacy, standard, adaptive
+# AWS Configuration for Bedrock
+AWS_DEFAULT_REGION=us-east-1
+# AWS_PROFILE=your-aws-profile  # Uncomment and set if using named profile
+# AWS_ACCESS_KEY_ID=your-access-key  # Or use explicit credentials
+# AWS_SECRET_ACCESS_KEY=your-secret-key
 
-# === Model Configuration ===
-DEFAULT_MODEL_ID=amazon.nova-lite-v1:0  # Default AI model
-DEFAULT_TEMPERATURE=0.7                  # Model temperature (0.0-1.0)
-DEFAULT_MAX_TOKENS=9500                 # Maximum response tokens
-DEFAULT_TOP_P=0.95                       # Nucleus sampling parameter
-DEFAULT_TOP_K=250                        # Top-k sampling parameter
+# Model Configuration
+DEFAULT_MODEL_ID=amazon.nova-lite-v1:0
+DEFAULT_TEMPERATURE=0.7
+DEFAULT_MAX_TOKENS=9500
 
-# === MCP Configuration ===
-MCP_CONNECTION_TIMEOUT=30.0      # Timeout for MCP server connections (seconds)
-MCP_TOOL_TIMEOUT=60.0            # Timeout for tool execution (seconds)
-MCP_MAX_RETRIES=3                # Maximum retry attempts for failed connections
-MCP_HEARTBEAT_INTERVAL=10.0      # Heartbeat interval for connection monitoring
+# MCP Configuration
+MCP_CONNECTION_TIMEOUT=30.0
+MCP_TOOL_TIMEOUT=60.0
 
-# === System Prompt ===
-DEFAULT_SYSTEM_PROMPT=You are a helpful AI assistant with access to MCP tools. Use available tools to help users accomplish their tasks efficiently.
+# Default System Prompt
+DEFAULT_SYSTEM_PROMPT=You are a helpful AI assistant with access to MCP tools.
 
-# === Logging Configuration ===
-LOG_LEVEL=INFO                   # Options: DEBUG, INFO, WARNING, ERROR
-LOG_FILE=app.log                 # Log file path (optional)
-LOG_FORMAT=%(asctime)s - %(name)s - %(levelname)s - %(message)s
-
-# === Security Configuration ===
-ALLOWED_ORIGINS=http://localhost:5000,http://127.0.0.1:5000  # CORS origins
-SESSION_COOKIE_SECURE=False      # Set to True with HTTPS
-SESSION_COOKIE_HTTPONLY=True     # Prevent JS access to session cookies
-SESSION_COOKIE_SAMESITE=Lax      # CSRF protection
+# Logging
+LOG_LEVEL=INFO
 ```
 
 ### MCP Server Configuration
@@ -226,8 +213,8 @@ Standard installation:
       "args": ["awslabs.dynamodb-mcp-server@latest"],
       "env": {
         "DDB-MCP-READONLY": "true",
-        "AWS_PROFILE": "default",
-        "AWS_REGION": "us-west-2",
+        "AWS_PROFILE": "your-named-profile",
+        "AWS_REGION": "us-east-1",
         "FASTMCP_LOG_LEVEL": "ERROR"
       },
       "disabled": false,
