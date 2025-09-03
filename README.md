@@ -162,58 +162,120 @@ SESSION_COOKIE_HTTPONLY=True     # Prevent JS access to session cookies
 SESSION_COOKIE_SAMESITE=Lax      # CSRF protection
 ```
 
-### MCP Server Configuration (data/mcp_servers.json)
+### MCP Server Configuration
 
-The application uses a JSON configuration file to manage MCP servers:
+The application integrates with various MCP servers to provide extended functionality. Below are configuration examples for popular MCP servers:
+
+#### AWS Cloud Control API (CCAPI) MCP Server
+
+Standard installation:
+```json
+{
+  "mcpServers": {
+    "awslabs.ccapi-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.ccapi-mcp-server@latest"],
+      "env": {
+        "AWS_PROFILE": "your-named-profile",
+        "DEFAULT_TAGS": "enabled",
+        "SECURITY_SCANNING": "enabled",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+Windows installation:
+```json
+{
+  "mcpServers": {
+    "awslabs.ccapi-mcp-server": {
+      "disabled": false,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "tool",
+        "run",
+        "--from",
+        "awslabs.ccapi-mcp-server@latest",
+        "awslabs.ccapi-mcp-server.exe"
+      ],
+      "env": {
+        "AWS_PROFILE": "your-named-profile",
+        "DEFAULT_TAGS": "enabled",
+        "SECURITY_SCANNING": "enabled",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}
+```
+
+#### AWS DynamoDB MCP Server
+
+Standard installation:
+```json
+{
+  "mcpServers": {
+    "awslabs.dynamodb-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.dynamodb-mcp-server@latest"],
+      "env": {
+        "DDB-MCP-READONLY": "true",
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "us-west-2",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+Windows installation:
+```json
+{
+  "mcpServers": {
+    "awslabs.dynamodb-mcp-server": {
+      "disabled": false,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "tool",
+        "run",
+        "--from",
+        "awslabs.dynamodb-mcp-server@latest",
+        "awslabs.dynamodb-mcp-server.exe"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR",
+        "AWS_PROFILE": "your-aws-profile",
+        "AWS_REGION": "us-east-1"
+      }
+    }
+  }
+}
+```
+
+#### PostgreSQL MCP Server
 
 ```json
 {
-  "active_servers": {
-    "filesystem": {
-      "name": "Filesystem Access",
-      "description": "Provides read/write access to local filesystem",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem"],
-      "args": ["/path/to/allowed/directory"],
-      "env_vars": {},
-      "enabled": true,
-      "auto_connect": false,
-      "category": "System",
-      "capabilities": ["read", "write", "list"],
-      "security_level": "high"
-    },
-    "memory": {
-      "name": "Memory Store",
-      "description": "In-memory key-value storage for conversation context",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-memory"],
-      "args": [],
-      "env_vars": {},
-      "enabled": true,
-      "auto_connect": true,
-      "category": "Storage",
-      "capabilities": ["store", "retrieve", "list"],
-      "security_level": "low"
-    },
-    "brave-search": {
-      "name": "Brave Search",
-      "description": "Web search using Brave Search API",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-brave-search"],
-      "args": [],
-      "env_vars": {
-        "BRAVE_API_KEY": "your-brave-api-key"
-      },
-      "enabled": true,
-      "auto_connect": false,
-      "category": "Web",
-      "capabilities": ["search"],
-      "security_level": "medium"
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://localhost/mydb"
+      ]
     }
-  },
-  "server_categories": {
-    "System": "System-level tools and file access",
-    "Storage": "Data storage and retrieval",
-    "Web": "Internet and web services",
-    "Development": "Development and coding tools",
-    "Custom": "User-defined custom servers"
   }
 }
 ```
@@ -397,35 +459,59 @@ mcp-demo-standalone/
 
 ## 🔧 Available MCP Servers
 
-### Official MCP Servers
+### AWS MCP Servers
 
-#### 1. Filesystem Server
+#### 1. AWS Cloud Control API (CCAPI) MCP Server
 ```bash
-npx -y @modelcontextprotocol/server-filesystem /path/to/directory
+uvx awslabs.ccapi-mcp-server@latest
 ```
-**Capabilities**: Read, write, list files and directories
-**Use Cases**: File manipulation, code editing, data processing
+**Capabilities**: Unified interface to AWS services through Cloud Control API
+**Use Cases**: 
+- Creating and managing AWS resources
+- Infrastructure provisioning and management
+- Automated deployment workflows
+- Resource tagging and compliance
 
-#### 2. Memory Server
-```bash
-npx -y @modelcontextprotocol/server-memory
-```
-**Capabilities**: Store and retrieve key-value pairs
-**Use Cases**: Context retention, temporary storage, session data
+**Configuration Options**:
+- `AWS_PROFILE`: AWS named profile to use
+- `DEFAULT_TAGS`: Enable default tagging for resources
+- `SECURITY_SCANNING`: Enable security scanning features
+- `FASTMCP_LOG_LEVEL`: Control logging verbosity
 
-#### 3. Brave Search Server
+#### 2. AWS DynamoDB MCP Server
 ```bash
-npx -y @modelcontextprotocol/server-brave-search
+uvx awslabs.dynamodb-mcp-server@latest
 ```
-**Capabilities**: Web search via Brave Search API
-**Use Cases**: Current events, research, fact-checking
+**Capabilities**: Direct interaction with DynamoDB tables
+**Use Cases**: 
+- Database queries and operations
+- Data migration and backup
+- Table management and monitoring
+- Item-level CRUD operations
 
-#### 4. GitHub Server
+**Configuration Options**:
+- `DDB-MCP-READONLY`: Set to "true" for read-only access
+- `AWS_PROFILE`: AWS named profile to use
+- `AWS_REGION`: AWS region for DynamoDB operations
+- `FASTMCP_LOG_LEVEL`: Control logging verbosity
+
+### Database MCP Servers
+
+#### 3. PostgreSQL Server
 ```bash
-npx -y @modelcontextprotocol/server-github
+npx -y @modelcontextprotocol/server-postgres postgresql://localhost/mydb
 ```
-**Capabilities**: Repository access, issues, pull requests
-**Use Cases**: Code review, issue tracking, repository management
+**Capabilities**: Full PostgreSQL database access
+**Use Cases**: 
+- SQL query execution
+- Database schema management
+- Data analysis and reporting
+- Transaction management
+
+**Connection String Format**:
+```
+postgresql://[user[:password]@][hostname][:port][/database][?param1=value1&...]
+```
 
 ### Custom Server Development
 
