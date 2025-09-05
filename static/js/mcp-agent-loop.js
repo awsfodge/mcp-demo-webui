@@ -19,6 +19,8 @@ let streamBuffer = '';
 let systemPrompt = 'You are a helpful AI assistant with access to MCP tools.';
 let serverConfigs = {}; // Store server configurations
 let currentModel = 'amazon.nova-lite-v1:0'; // Current selected model
+let strandsToolsConfig = {}; // Store Strands tools configuration
+let pendingToolChanges = {}; // Track pending tool changes
 
 // New state for frontend parsing
 let fullMessageBuffer = ''; // Accumulates the complete message
@@ -33,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadServers();
         loadSystemPrompt();
         loadCurrentModel();
+        loadStrandsTools();
         setupEventListeners();
         joinMCPRoom();
         updateStats();
@@ -92,6 +95,234 @@ function loadSystemPrompt() {
         .catch(error => {
             console.error('Failed to load system prompt:', error);
         });
+}
+
+// Strands Tools Functions
+function loadStrandsTools() {
+    fetch('/api/mcp/strands-tools')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.tools) {
+                strandsToolsConfig = data.tools;
+                updateStrandsToolsCount();
+            }
+        })
+        .catch(error => {
+            console.error('Failed to load Strands tools:', error);
+        });
+}
+
+function updateStrandsToolsCount() {
+    const badge = document.getElementById('strandsToolsCount');
+    if (badge && strandsToolsConfig) {
+        badge.textContent = strandsToolsConfig.total_enabled || 0;
+    }
+}
+
+function showStrandsToolsModal() {
+    const modal = document.getElementById('strandsToolsModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        loadStrandsToolsList();
+    }
+}
+
+function hideStrandsToolsModal() {
+    const modal = document.getElementById('strandsToolsModal');
+    if (modal) {
+        modal.style.display = 'none';
+        // Reset pending changes
+        pendingToolChanges = {};
+    }
+}
+
+function loadStrandsToolsList() {
+    fetch('/api/mcp/strands-tools')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.tools) {
+                strandsToolsConfig = data.tools;
+                renderStrandsToolsList();
+            }
+        })
+        .catch(error => {
+            console.error('Failed to load tools list:', error);
+            const container = document.getElementById('strandsToolsList');
+            if (container) {
+                container.innerHTML = '<div class="alert alert-error">Failed to load tools</div>';
+            }
+        });
+}
+
+function renderStrandsToolsList() {
+    const container = document.getElementById('strandsToolsList');
+    if (!container || !strandsToolsConfig.categories) return;
+    
+    let html = '';
+    let totalEnabled = 0;
+    
+    for (const [category, categoryInfo] of Object.entries(strandsToolsConfig.categories)) {
+        const enabledCount = categoryInfo.enabled_count || 0;
+        totalEnabled += enabledCount;
+        
+        html += `
+            <div class="tool-category" data-category="${category}">
+                <div class="tool-category-header" onclick="toggleCategoryCollapse('${category}')">
+                    <div class="category-title">
+                        <i class="bi bi-chevron-down" id="category-icon-${category.replace(/ /g, '-')}"></i>
+                        ${category}
+                    </div>
+                    <div class="category-count">
+                        ${enabledCount} / ${Object.keys(categoryInfo.tools || {}).length} enabled
+                    </div>
+                </div>
+                <div class="tool-category-tools" id="category-tools-${category.replace(/ /g, '-')}" style="display: block;">
+        `;
+        
+        for (const [toolId, toolInfo] of Object.entries(categoryInfo.tools || {})) {
+            const toolKey = `${category}:${toolId}`;
+            const isEnabled = pendingToolChanges[toolKey] !== undefined ? 
+                             pendingToolChanges[toolKey] : 
+                             toolInfo.enabled;
+            
+            html += `
+                <div class="tool-item" data-tool="${toolId}">
+                    <input type="checkbox" 
+                           class="tool-checkbox" 
+                           id="tool-${toolId}"
+                           data-category="${category}"
+                           data-tool-id="${toolId}"
+                           ${isEnabled ? 'checked' : ''}
+                           onchange="onToolToggle('${category}', '${toolId}', this.checked)">
+                    <div class="tool-info">
+                        <div class="tool-name">
+                            <label for="tool-${toolId}">${toolInfo.name}</label>
+                            ${toolInfo.loaded ? '<span class="tool-badge loaded">LOADED</span>' : ''}
+                            ${toolInfo.requires_extra ? `<span class="tool-badge requires-extra" title="Requires: pip install 'strands-agents-tools[${toolInfo.requires_extra}]'">EXTRA</span>` : ''}
+                        </div>
+                        <div class="tool-description">
+                            ${toolInfo.description}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    
+    // Update enabled count
+    const countElement = document.getElementById('enabledToolsCount');
+    if (countElement) {
+        const enabledCount = Object.values(pendingToolChanges).filter(v => v).length || totalEnabled;
+        countElement.textContent = enabledCount;
+    }
+}
+
+function toggleCategoryCollapse(category) {
+    const toolsDiv = document.getElementById(`category-tools-${category.replace(/ /g, '-')}`);
+    const icon = document.getElementById(`category-icon-${category.replace(/ /g, '-')}`);
+    
+    if (toolsDiv) {
+        if (toolsDiv.style.display === 'none') {
+            toolsDiv.style.display = 'block';
+            if (icon) icon.className = 'bi bi-chevron-down';
+        } else {
+            toolsDiv.style.display = 'none';
+            if (icon) icon.className = 'bi bi-chevron-right';
+        }
+    }
+}
+
+function onToolToggle(category, toolId, enabled) {
+    const toolKey = `${category}:${toolId}`;
+    pendingToolChanges[toolKey] = enabled;
+    
+    // Update enabled count
+    const countElement = document.getElementById('enabledToolsCount');
+    if (countElement) {
+        let enabledCount = 0;
+        
+        // Count from existing config and apply pending changes
+        for (const [cat, catInfo] of Object.entries(strandsToolsConfig.categories || {})) {
+            for (const [tid, tInfo] of Object.entries(catInfo.tools || {})) {
+                const key = `${cat}:${tid}`;
+                if (pendingToolChanges[key] !== undefined) {
+                    if (pendingToolChanges[key]) enabledCount++;
+                } else if (tInfo.enabled) {
+                    enabledCount++;
+                }
+            }
+        }
+        
+        countElement.textContent = enabledCount;
+    }
+}
+
+function toggleAllTools(enable) {
+    const checkboxes = document.querySelectorAll('.tool-checkbox');
+    checkboxes.forEach(checkbox => {
+        const category = checkbox.dataset.category;
+        const toolId = checkbox.dataset.toolId;
+        if (category && toolId) {
+            checkbox.checked = enable;
+            onToolToggle(category, toolId, enable);
+        }
+    });
+}
+
+function filterStrandsTools() {
+    const searchInput = document.getElementById('toolSearchInput');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    const toolItems = document.querySelectorAll('.tool-item');
+    toolItems.forEach(item => {
+        const toolName = item.querySelector('.tool-name')?.textContent.toLowerCase() || '';
+        const toolDesc = item.querySelector('.tool-description')?.textContent.toLowerCase() || '';
+        
+        if (toolName.includes(searchTerm) || toolDesc.includes(searchTerm)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function saveStrandsToolsConfig() {
+    if (Object.keys(pendingToolChanges).length === 0) {
+        showToast('No changes to save', 'info');
+        hideStrandsToolsModal();
+        return;
+    }
+    
+    fetch('/api/mcp/strands-tools/bulk-update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            updates: pendingToolChanges
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Tools configuration saved successfully', 'success');
+            loadStrandsTools(); // Reload to get updated counts
+            hideStrandsToolsModal();
+        } else {
+            showToast('Failed to save configuration: ' + (data.error || 'Unknown error'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving tools config:', error);
+        showToast('Failed to save configuration', 'error');
+    });
 }
 
 function setupEventListeners() {
@@ -1510,22 +1741,36 @@ function createServerCard(server) {
 
 async function updateAvailableTools() {
     try {
-        const response = await fetch('/api/mcp/tools');
-        const data = await response.json();
+        // Get MCP tools
+        const mcpResponse = await fetch('/api/mcp/tools');
+        const mcpData = await mcpResponse.json();
         
-        if (data.success && data.tools) {
-            // Update the tool count in the chat input area
-            const toolsCountEl = document.getElementById('connectedToolsCount');
-            if (toolsCountEl) {
-                toolsCountEl.textContent = data.tools.length;
-            }
+        // Get Strands tools count
+        const strandsResponse = await fetch('/api/mcp/strands-tools');
+        const strandsData = await strandsResponse.json();
+        
+        let totalTools = 0;
+        if (mcpData.success && mcpData.tools) {
+            totalTools += mcpData.tools.length;
+        }
+        if (strandsData.success && strandsData.tools) {
+            totalTools += strandsData.tools.total_enabled || 0;
+        }
+        
+        // Update the tool count in the chat input area
+        const toolsCountEl = document.getElementById('connectedToolsCount');
+        if (toolsCountEl) {
+            toolsCountEl.textContent = totalTools;
+        }
+        
+        if (mcpData.success && mcpData.tools) {
             
             const toolsContainer = document.getElementById('availableTools');
             if (toolsContainer) {
-                if (data.tools.length === 0) {
+                if (mcpData.tools.length === 0) {
                     toolsContainer.innerHTML = '<p class="text-tertiary">No tools available</p>';
                 } else {
-                    toolsContainer.innerHTML = data.tools.map(tool => `
+                    toolsContainer.innerHTML = mcpData.tools.map(tool => `
                         <div class="tool-item">
                             <i class="bi bi-wrench"></i>
                             <span>${tool.name}</span>

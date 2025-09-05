@@ -1,0 +1,168 @@
+{
+  "enabled_tools": [
+    "calculator",
+    "file_read",
+    "shell"
+  ],
+  "tool_categories": {
+    "File & System": {
+      "file_edit": {
+        "name": "File Edit",
+        "description": "Edit files with advanced capabilities",
+        "module": "file_edit",
+        "enabled": false
+      },
+      "shell": {
+        "name": "Shell",
+        "description": "Execute shell commands",
+        "module": "shell",
+        "enabled": true
+      },
+      "env_var": {
+        "name": "Environment Variables",
+        "description": "Manage environment variables",
+        "module": "env_var",
+        "enabled": false
+      },
+      "desktop_automation": {
+        "name": "Desktop Automation",
+        "description": "Automate desktop interactions",
+        "module": "desktop_automation",
+        "enabled": false,
+        "requires_extra": "desktop"
+      },
+      "file_read": {
+        "name": "File Read",
+        "description": "Read and parse various file formats",
+        "module": "file_read",
+        "enabled": true
+      }
+    },
+    "Web & Network": {
+      "http_request": {
+        "name": "HTTP Request",
+        "description": "Make HTTP requests to APIs and websites",
+        "module": "http_request",
+        "enabled": false
+      },
+      "slack": {
+        "name": "Slack Integration",
+        "description": "Send messages and interact with Slack",
+        "module": "slack",
+        "enabled": false,
+        "requires_extra": "slack"
+      },
+      "rss_feed": {
+        "name": "RSS Feed",
+        "description": "Read and parse RSS feeds",
+        "module": "rss_feed",
+        "enabled": false
+      },
+      "local_chromium_browser": {
+        "name": "Web Browser",
+        "description": "Control a Chromium browser for web automation",
+        "module": "local_chromium_browser",
+        "enabled": false,
+        "requires_extra": "local_chromium_browser"
+      }
+    },
+    "Code & Development": {
+      "python_repl": {
+        "name": "Python REPL",
+        "description": "Execute Python code in an interactive REPL",
+        "module": "python_repl",
+        "enabled": false
+      },
+      "code_sandbox": {
+        "name": "Code Sandbox",
+        "description": "Execute code in an isolated sandbox environment",
+        "module": "code_sandbox",
+        "enabled": false,
+        "requires_extra": "code_sandbox"
+      },
+      "calculator": {
+        "name": "Calculator",
+        "description": "Perform mathematical calculations",
+        "module": "calculator",
+        "enabled": true
+      }
+    },
+    "Multi-modal": {
+      "image_generation": {
+        "name": "Image Generation",
+        "description": "Generate images using AI models",
+        "module": "image_generation",
+        "enabled": false,
+        "requires_extra": "image_generation"
+      },
+      "image_analysis": {
+        "name": "Image Analysis",
+        "description": "Analyze and understand images",
+        "module": "image_analysis",
+        "enabled": false,
+        "requires_extra": "image_analysis"
+      },
+      "speech_generation": {
+        "name": "Speech Generation",
+        "description": "Convert text to speech",
+        "module": "speech_generation",
+        "enabled": false,
+        "requires_extra": "speech"
+      },
+      "video_creation": {
+        "name": "Video Creation",
+        "description": "Create and edit videos",
+        "module": "video_creation",
+        "enabled": false,
+        "requires_extra": "video"
+      },
+      "diagram_generation": {
+        "name": "Diagram Generation",
+        "description": "Create diagrams and visualizations",
+        "module": "diagram_generation",
+        "enabled": false,
+        "requires_extra": "diagrams"
+      }
+    },
+    "Memory & RAG": {
+      "semantic_retrieval": {
+        "name": "Semantic Retrieval",
+        "description": "Semantic search and retrieval from documents",
+        "module": "semantic_retrieval",
+        "enabled": false,
+        "requires_extra": "retrieval"
+      },
+      "agent_memory": {
+        "name": "Agent Memory",
+        "description": "Persistent memory for agents",
+        "module": "agent_memory",
+        "enabled": false,
+        "requires_extra": "memory"
+      }
+    },
+    "Workflow & Agents": {
+      "handoff_to_user": {
+        "name": "Handoff to User",
+        "description": "Request user input or approval during execution",
+        "module": "handoff_to_user",
+        "enabled": false
+      },
+      "multi_agent": {
+        "name": "Multi-Agent System",
+        "description": "Coordinate multiple agents for complex tasks",
+        "module": "multi_agent",
+        "enabled": false
+      },
+      "task_journal": {
+        "name": "Task Journal",
+        "description": "Track and journal agent tasks",
+        "module": "task_journal",
+        "enabled": false
+      }
+    }
+  },
+  "tool_preferences": {
+    "consent_bypass": true,
+    "auto_load": true
+  }
+}

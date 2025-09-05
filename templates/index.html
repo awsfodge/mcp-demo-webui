@@ -314,6 +314,145 @@
         border-color: var(--color-accent);
         box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
     }
+    
+    /* Strands Tools Styles */
+    .btn-accent {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: var(--space-3) var(--space-4);
+        border-radius: var(--radius-md);
+        font-weight: var(--font-weight-medium);
+        cursor: pointer;
+        transition: all var(--transition-base);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+    }
+    
+    .btn-accent:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-accent .badge {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 11px;
+        margin-left: auto;
+    }
+    
+    .tool-category {
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-primary);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+    
+    .tool-category-header {
+        background: var(--bg-tertiary);
+        padding: var(--space-3) var(--space-4);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+        transition: background var(--transition-fast);
+    }
+    
+    .tool-category-header:hover {
+        background: var(--hover-bg);
+    }
+    
+    .tool-category-header .category-title {
+        font-weight: var(--font-weight-semibold);
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+    
+    .tool-category-header .category-count {
+        background: var(--bg-secondary);
+        padding: 2px 8px;
+        border-radius: var(--radius-sm);
+        font-size: var(--font-size-xs);
+        color: var(--text-tertiary);
+    }
+    
+    .tool-category-tools {
+        padding: var(--space-3);
+        background: var(--bg-secondary);
+    }
+    
+    .tool-item {
+        display: flex;
+        align-items: flex-start;
+        padding: var(--space-3);
+        background: var(--bg-primary);
+        border-radius: var(--radius-base);
+        margin-bottom: var(--space-2);
+        transition: all var(--transition-fast);
+    }
+    
+    .tool-item:hover {
+        background: var(--hover-bg);
+    }
+    
+    .tool-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .tool-checkbox {
+        margin-right: var(--space-3);
+        margin-top: 2px;
+    }
+    
+    .tool-info {
+        flex: 1;
+    }
+    
+    .tool-name {
+        font-weight: var(--font-weight-medium);
+        color: var(--text-primary);
+        margin-bottom: var(--space-1);
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+    
+    .tool-description {
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+    
+    .tool-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        font-size: 10px;
+        font-weight: var(--font-weight-medium);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .tool-badge.requires-extra {
+        background: rgba(217, 119, 6, 0.1);
+        color: var(--color-warning);
+    }
+    
+    .tool-badge.loaded {
+        background: rgba(5, 150, 105, 0.1);
+        color: var(--color-success);
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
 </style>
 {% endblock %}
 
@@ -412,6 +551,13 @@
                 Add MCP Server
             </button>
             
+            <!-- Strands Tools Button -->
+            <button class="btn-accent w-full" onclick="showStrandsToolsModal()">
+                <i class="bi bi-tools mr-2"></i>
+                Strands Tools
+                <span class="badge badge-sm" id="strandsToolsCount">0</span>
+            </button>
+            
             <!-- System Prompt Configuration -->
             <div class="container">
                 <div class="container-header">
@@ -454,6 +600,65 @@
                         <div class="stat-sidebar-value" id="activeServers">0</div>
                         <div class="stat-sidebar-label">Active Servers</div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Strands Tools Modal -->
+<div class="modal" id="strandsToolsModal" style="display: none;">
+    <div class="modal-backdrop" onclick="hideStrandsToolsModal()"></div>
+    <div class="modal-content" style="max-width: 900px; width: 90vw; max-height: 85vh;">
+        <div class="modal-header">
+            <h2 class="modal-title">Strands Community Tools</h2>
+            <button class="btn-ghost btn-sm" onclick="hideStrandsToolsModal()">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="max-height: calc(85vh - 140px); overflow-y: auto;">
+            <div class="mb-4">
+                <p class="text-secondary mb-3">
+                    Enable powerful community-built tools to extend your agent's capabilities.
+                    Some tools may require additional installation.
+                </p>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" 
+                           id="toolSearchInput" 
+                           class="form-input flex-1" 
+                           placeholder="Search tools..."
+                           onkeyup="filterStrandsTools()">
+                    <button class="btn-secondary" onclick="toggleAllTools(false)">
+                        <i class="bi bi-square mr-1"></i>
+                        Disable All
+                    </button>
+                    <button class="btn-secondary" onclick="toggleAllTools(true)">
+                        <i class="bi bi-check-square mr-1"></i>
+                        Enable All
+                    </button>
+                </div>
+            </div>
+            <div id="strandsToolsList">
+                <!-- Tool categories will be dynamically loaded here -->
+                <div class="text-center py-8">
+                    <i class="bi bi-arrow-repeat" style="font-size: 2rem; animation: spin 1s linear infinite;"></i>
+                    <p class="text-secondary mt-2">Loading tools...</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div class="flex justify-between items-center w-full">
+                <span class="text-sm text-secondary">
+                    <span id="enabledToolsCount">0</span> tools enabled
+                </span>
+                <div class="flex gap-2">
+                    <button class="btn-secondary" onclick="hideStrandsToolsModal()">
+                        Cancel
+                    </button>
+                    <button class="btn-primary" onclick="saveStrandsToolsConfig()">
+                        <i class="bi bi-check-circle mr-2"></i>
+                        Save Configuration
+                    </button>
                 </div>
             </div>
         </div>

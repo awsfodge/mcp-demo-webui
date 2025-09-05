@@ -490,6 +490,114 @@ def get_chat_stats():
             'error': str(e)
         }), 500
 
+@mcp_bp.route('/strands-tools', methods=['GET'])
+def get_strands_tools():
+    """Get all available Strands tools with their status"""
+    try:
+        status = strands_agent.get_strands_tools_status()
+        return jsonify({
+            'success': True,
+            'tools': status
+        })
+    except Exception as e:
+        logger.error(f"Error getting Strands tools: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@mcp_bp.route('/strands-tools/enabled', methods=['GET'])
+def get_enabled_strands_tools():
+    """Get currently enabled Strands tools"""
+    try:
+        status = strands_agent.get_strands_tools_status()
+        enabled_tools = []
+        
+        for category, cat_info in status.get('categories', {}).items():
+            for tool_id, tool_info in cat_info.get('tools', {}).items():
+                if tool_info.get('enabled', False):
+                    enabled_tools.append({
+                        'id': tool_id,
+                        'category': category,
+                        'name': tool_info.get('name'),
+                        'loaded': tool_info.get('loaded')
+                    })
+        
+        return jsonify({
+            'success': True,
+            'enabled_tools': enabled_tools,
+            'count': len(enabled_tools)
+        })
+    except Exception as e:
+        logger.error(f"Error getting enabled tools: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@mcp_bp.route('/strands-tools/toggle', methods=['POST'])
+def toggle_strands_tool():
+    """Enable or disable a specific Strands tool"""
+    try:
+        data = request.json
+        tool_id = data.get('tool_id')
+        category = data.get('category')
+        enabled = data.get('enabled', False)
+        
+        if not tool_id or not category:
+            return jsonify({
+                'success': False,
+                'error': 'Missing tool_id or category'
+            }), 400
+        
+        success = strands_agent.toggle_strands_tool(tool_id, category, enabled)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f"Tool {tool_id} {'enabled' if enabled else 'disabled'}"
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to toggle tool'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error toggling tool: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@mcp_bp.route('/strands-tools/bulk-update', methods=['POST'])
+def bulk_update_strands_tools():
+    """Update multiple Strands tools at once"""
+    try:
+        data = request.json
+        updates = data.get('updates', {})
+        
+        if not updates:
+            return jsonify({
+                'success': False,
+                'error': 'No updates provided'
+            }), 400
+        
+        results = strands_agent.bulk_update_strands_tools(updates)
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'message': f'Updated {len(results)} tools'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in bulk update: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @mcp_bp.route('/history', methods=['GET'])
 def get_tool_history():
     """Get tool execution history"""

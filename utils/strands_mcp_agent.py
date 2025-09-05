@@ -7,10 +7,14 @@ import os
 import json
 import logging
 import asyncio
+import importlib
 from typing import Dict, List, Optional, Any, AsyncGenerator
 from datetime import datetime
 from pathlib import Path
 from contextlib import ExitStack
+
+# Set environment variable to bypass tool consent prompts
+os.environ["BYPASS_TOOL_CONSENT"] = "true"
 
 # Import Strands components
 from strands import Agent
@@ -66,12 +70,15 @@ class FilteredMCPClient(MCPClient):
 class StrandsMCPAgent:
     """Strands Agent with proper MCP tool integration and Bedrock support"""
     
-    def __init__(self, config_path: str = "data/mcp_servers.json"):
+    def __init__(self, config_path: str = "data/mcp_servers.json", tools_config_path: str = "data/strands_tools_config.json"):
         self.config_path = Path(config_path)
+        self.tools_config_path = Path(tools_config_path)
         self.mcp_servers = {}
         self.mcp_clients = {}
         self.conversation_history = []
         self.connected_servers = {}
+        self.strands_tools = {}  # Store loaded Strands tools
+        self.tools_config = {}  # Store tools configuration
         
         # Configure Bedrock model (default to Nova Lite)
         self.current_model_id = "amazon.nova-lite-v1:0"
@@ -82,8 +89,13 @@ class StrandsMCPAgent:
             streaming=True
         )
         
-        # Load MCP server configurations (but don't connect yet)
+        # Load configurations
         self.load_mcp_server_configs()
+        self.load_strands_tools_config()
+        self.load_enabled_strands_tools()
+        
+        # Log loaded tools for debugging
+        logger.info(f"Loaded {len(self.strands_tools)} Strands tools: {list(self.strands_tools.keys())}")
     
     def update_model(self, model_id: str):
         """Update the Bedrock model being used"""
@@ -98,6 +110,136 @@ class StrandsMCPAgent:
             streaming=True
         )
         logger.info(f"Model updated successfully to {model_id}")
+    
+    def load_strands_tools_config(self):
+        """Load Strands tools configuration"""
+        if not self.tools_config_path.exists():
+            logger.warning(f"Strands tools config file not found: {self.tools_config_path}")
+            return
+        
+        try:
+            with open(self.tools_config_path, 'r') as f:
+                self.tools_config = json.load(f)
+            
+            # Apply tool preferences
+            if self.tools_config.get('tool_preferences', {}).get('consent_bypass', False):
+                os.environ["BYPASS_TOOL_CONSENT"] = "true"
+                logger.info("Tool consent bypass enabled")
+            
+            logger.info(f"Loaded Strands tools configuration")
+        except Exception as e:
+            logger.error(f"Failed to load Strands tools config: {str(e)}")
+            self.tools_config = {"enabled_tools": [], "tool_categories": {}}
+    
+    def load_enabled_strands_tools(self):
+        """Dynamically load enabled Strands tools"""
+        self.strands_tools = {}
+        
+        if not self.tools_config:
+            return
+        
+        # Get all enabled tools from categories
+        enabled_tools = set()
+        for category, tools in self.tools_config.get('tool_categories', {}).items():
+            for tool_id, tool_info in tools.items():
+                if tool_info.get('enabled', False):
+                    module_name = tool_info.get('module', tool_id)
+                    enabled_tools.add(module_name)
+        
+        # Load each enabled tool
+        for tool_name in enabled_tools:
+            try:
+                # Import the specific tool module from strands_tools
+                tool_module = importlib.import_module(f'strands_tools.{tool_name}')
+                
+                # Get the tool function from the module (usually has the same name)
+                if hasattr(tool_module, tool_name):
+                    tool = getattr(tool_module, tool_name)
+                    self.strands_tools[tool_name] = tool
+                    logger.info(f"Loaded Strands tool: {tool_name}")
+                else:
+                    # Some tools might have different function names, check TOOL_SPEC
+                    logger.warning(f"Tool function {tool_name} not found in module strands_tools.{tool_name}")
+            except ImportError as e:
+                logger.error(f"Failed to import tool {tool_name}: {str(e)}")
+            except Exception as e:
+                logger.error(f"Error loading tool {tool_name}: {str(e)}")
+    
+    def get_strands_tools_status(self) -> Dict[str, Any]:
+        """Get status of all Strands tools"""
+        status = {
+            "categories": {},
+            "total_available": 0,
+            "total_enabled": 0,
+            "loaded_tools": list(self.strands_tools.keys())
+        }
+        
+        for category, tools in self.tools_config.get('tool_categories', {}).items():
+            category_info = {
+                "tools": {},
+                "enabled_count": 0
+            }
+            
+            for tool_id, tool_info in tools.items():
+                is_enabled = tool_info.get('enabled', False)
+                is_loaded = tool_info.get('module', tool_id) in self.strands_tools
+                
+                category_info["tools"][tool_id] = {
+                    "name": tool_info.get('name', tool_id),
+                    "description": tool_info.get('description', ''),
+                    "enabled": is_enabled,
+                    "loaded": is_loaded,
+                    "requires_extra": tool_info.get('requires_extra')
+                }
+                
+                status["total_available"] += 1
+                if is_enabled:
+                    category_info["enabled_count"] += 1
+                    status["total_enabled"] += 1
+            
+            status["categories"][category] = category_info
+        
+        return status
+    
+    def toggle_strands_tool(self, tool_id: str, category: str, enabled: bool) -> bool:
+        """Enable or disable a Strands tool"""
+        try:
+            # Update configuration
+            if category in self.tools_config.get('tool_categories', {}):
+                if tool_id in self.tools_config['tool_categories'][category]:
+                    self.tools_config['tool_categories'][category][tool_id]['enabled'] = enabled
+                    
+                    # Save configuration
+                    with open(self.tools_config_path, 'w') as f:
+                        json.dump(self.tools_config, f, indent=2)
+                    
+                    # Reload tools
+                    self.load_enabled_strands_tools()
+                    
+                    logger.info(f"Tool {tool_id} {'enabled' if enabled else 'disabled'}")
+                    return True
+            
+            logger.error(f"Tool {tool_id} not found in category {category}")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Failed to toggle tool {tool_id}: {str(e)}")
+            return False
+    
+    def bulk_update_strands_tools(self, updates: Dict[str, bool]) -> Dict[str, bool]:
+        """Bulk update multiple Strands tools"""
+        results = {}
+        
+        for tool_key, enabled in updates.items():
+            # tool_key format: "category:tool_id"
+            if ':' in tool_key:
+                category, tool_id = tool_key.split(':', 1)
+                success = self.toggle_strands_tool(tool_id, category, enabled)
+                results[tool_key] = success
+            else:
+                results[tool_key] = False
+        
+        return results
     
     def load_mcp_server_configs(self):
         """Load MCP server configurations without connecting"""
@@ -199,8 +341,9 @@ class StrandsMCPAgent:
         return True
     
     async def get_available_tools(self) -> List[Dict]:
-        """Get list of all available tools from connected servers"""
-        all_tools = []
+        """Get list of all available tools from connected servers and Strands"""
+        # Start with loaded Strands tools
+        all_tools = list(self.strands_tools.values())
         
         for server_id, mcp_client in self.mcp_clients.items():
             try:
@@ -246,21 +389,29 @@ class StrandsMCPAgent:
             conversation_messages = []
             
             # Add tool usage guidance
-            tool_guidance = """CRITICAL: When calling tools, ONLY provide parameters that have actual values.
+            tool_guidance = """IMPORTANT: You have access to real tools that you MUST use to complete tasks. 
 
-For unified_email_search tool specifically:
-- To search emails from today: ONLY provide date_filter='today' and limit=50
-- To search emails from a sender: ONLY provide sender='email@domain.com' and limit=50  
-- To search by keyword: ONLY provide query='keyword' and limit=50
-- DO NOT provide any other parameters unless specifically needed
-- NEVER provide empty strings, None, null, or undefined values
+When a user asks you to perform an action that requires a tool:
+1. IMMEDIATELY invoke the appropriate tool - DO NOT describe what you would do
+2. Use the actual tool function, not a JSON representation
+3. Wait for the tool's response before continuing
+4. Base your response on the actual tool output
 
-Examples of CORRECT tool calls:
-- "emails from today" → {date_filter: 'today', limit: 50}
-- "emails from john@example.com" → {sender: 'john@example.com', limit: 50}
-- "emails about project X" → {query: 'project X', limit: 50}
+Tool Usage Rules:
+- ALWAYS use tools when they are relevant to the user's request
+- NEVER describe tool usage in hypothetical terms like "I would use" or "I will use"
+- DIRECTLY invoke tools without asking for permission
+- Only provide parameters that have actual values
+- Never provide empty strings, None, null, or undefined values
+- For file operations: Use file_read to read files, file_edit to modify them
+- For system operations: Use shell to execute commands
+- For calculations: Use calculator for mathematical operations
 
-The tool will fail if you provide unnecessary parameters!"""
+Example: If asked to "read the README file":
+✓ CORRECT: Directly call file_read(file_path="README.md")
+✗ WRONG: "I will use the file_read tool to read the README file"
+
+You are an AI assistant with REAL tool access. Use them!"""
             
             if system_prompt:
                 conversation_messages.append(f"System: {system_prompt}\n\n{tool_guidance}")
@@ -280,17 +431,20 @@ The tool will fail if you provide unnecessary parameters!"""
             
             response_text = ""
             
-            if use_tools and self.mcp_clients:
+            if use_tools and (self.mcp_clients or self.strands_tools):
                 # Execute within all MCP client contexts using sync context manager
                 with ExitStack() as stack:
-                    # Collect all tools from all connected MCP clients
-                    all_tools = []
+                    # Start with loaded Strands tools
+                    all_tools = list(self.strands_tools.values())
+                    
+                    # Add MCP tools if any clients are connected
                     for mcp_client in self.mcp_clients.values():
                         stack.enter_context(mcp_client)
                         tools = mcp_client.list_tools_sync()
                         all_tools.extend(tools)
                     
-                    # Create agent with Bedrock model and MCP tools
+                    # Create agent with Bedrock model and all tools
+                    logger.info(f"Creating agent with {len(all_tools)} tools")
                     agent = Agent(model=self.bedrock_model, tools=all_tools)
                     
                     # Run the agent (using direct call, not run_async)
@@ -350,21 +504,29 @@ The tool will fail if you provide unnecessary parameters!"""
             conversation_messages = []
             
             # Add tool usage guidance
-            tool_guidance = """CRITICAL: When calling tools, ONLY provide parameters that have actual values.
+            tool_guidance = """IMPORTANT: You have access to real tools that you MUST use to complete tasks. 
 
-For unified_email_search tool specifically:
-- To search emails from today: ONLY provide date_filter='today' and limit=50
-- To search emails from a sender: ONLY provide sender='email@domain.com' and limit=50  
-- To search by keyword: ONLY provide query='keyword' and limit=50
-- DO NOT provide any other parameters unless specifically needed
-- NEVER provide empty strings, None, null, or undefined values
+When a user asks you to perform an action that requires a tool:
+1. IMMEDIATELY invoke the appropriate tool - DO NOT describe what you would do
+2. Use the actual tool function, not a JSON representation
+3. Wait for the tool's response before continuing
+4. Base your response on the actual tool output
 
-Examples of CORRECT tool calls:
-- "emails from today" → {date_filter: 'today', limit: 50}
-- "emails from john@example.com" → {sender: 'john@example.com', limit: 50}
-- "emails about project X" → {query: 'project X', limit: 50}
+Tool Usage Rules:
+- ALWAYS use tools when they are relevant to the user's request
+- NEVER describe tool usage in hypothetical terms like "I would use" or "I will use"
+- DIRECTLY invoke tools without asking for permission
+- Only provide parameters that have actual values
+- Never provide empty strings, None, null, or undefined values
+- For file operations: Use file_read to read files, file_edit to modify them
+- For system operations: Use shell to execute commands
+- For calculations: Use calculator for mathematical operations
 
-The tool will fail if you provide unnecessary parameters!"""
+Example: If asked to "read the README file":
+✓ CORRECT: Directly call file_read(file_path="README.md")
+✗ WRONG: "I will use the file_read tool to read the README file"
+
+You are an AI assistant with REAL tool access. Use them!"""
             
             if system_prompt:
                 conversation_messages.append(f"System: {system_prompt}\n\n{tool_guidance}")
@@ -384,17 +546,20 @@ The tool will fail if you provide unnecessary parameters!"""
             full_response = ""
             current_tool_use = None
             
-            if use_tools and self.mcp_clients:
+            if use_tools and (self.mcp_clients or self.strands_tools):
                 # Stream within MCP contexts
                 with ExitStack() as stack:
-                    # Enter all MCP client contexts (sync)
-                    all_tools = []
+                    # Start with loaded Strands tools
+                    all_tools = list(self.strands_tools.values())
+                    
+                    # Add MCP tools if any clients are connected
                     for mcp_client in self.mcp_clients.values():
                         stack.enter_context(mcp_client)
                         tools = mcp_client.list_tools_sync()
                         all_tools.extend(tools)
                     
-                    # Create agent with tools
+                    # Create agent with all tools
+                    logger.info(f"Streaming with {len(all_tools)} tools")
                     agent = Agent(model=self.bedrock_model, tools=all_tools)
                     
                     # Stream the response - simplified approach

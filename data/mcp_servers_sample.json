@@ -1,39 +1,5 @@
 {
   "active_servers": {
-    "e8cc2e48-f4b8-4fc6-8c37-974dc4128a14": {
-      "name": "Filesystem Server",
-      "description": "Access and manipulate files and directories on the local system",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/tmp"
-      ],
-      "args": [],
-      "env_vars": {},
-      "enabled": true,
-      "auto_connect": false,
-      "category": "General",
-      "added_at": "2025-08-22T15:27:36.110891"
-    },
-    "8e24fd1f-2ac5-4004-ab07-d75c6cc3a218": {
-      "name": "AWS S3",
-      "description": "AWS S3 Data Access",
-      "command": [
-        "python3"
-      ],
-      "args": [
-        "-m",
-        "awslabs.aws_api_mcp_server.server"
-      ],
-      "env_vars": {
-        "AWS_REGION": "us-east-1"
-      },
-      "enabled": true,
-      "auto_connect": false,
-      "category": "General",
-      "added_at": "2025-08-22T15:27:36.110911"
-    },
     "87995814-a15e-440c-8d5c-0e22791c1222": {
       "name": "AWS Cloud Control",
       "description": "Cloud control",
@@ -41,10 +7,10 @@
         "uvx"
       ],
       "args": [
-        "awslabs.ccapi-mcp-server@latest"
+        "awslabs.ccapi-mcp-server"
       ],
       "env_vars": {
-        "AWS_PROFILE": "AI-app-demos-Admin",
+        "AWS_PROFILE": "your-named-profile",
         "DEFAULT_TAGS": "enabled",
         "FASTMCP_LOG_LEVEL": "ERROR",
         "SECURITY_SCANNING": "enabled"
@@ -54,74 +20,17 @@
       "category": "General",
       "added_at": "2025-08-22T15:27:36.110916"
     },
-    "43f9103a-4cc8-4e62-b97b-44c5d949261c": {
-      "name": "Knowledge Base",
-      "description": "AWS Knowledge Base retrieval",
-      "command": [
-        "uvx"
-      ],
-      "args": [
-        "awslabs.bedrock-kb-retrieval-mcp-server@latest"
-      ],
-      "env_vars": {
-        "AWS_PROFILE": "AI-app-demos-Admin",
-        "AWS_REGION": "us-east-1",
-        "FASTMCP_LOG_LEVEL": "ERROR",
-        "BEDROCK_KB_RERANKING_ENABLED": "false"
-      },
-      "enabled": true,
-      "auto_connect": false,
-      "category": "General",
-      "added_at": "2025-08-22T15:27:36.110920"
-    },
-    "bcc3f8c6-6ce0-4b3b-940a-9e33b2685764": {
-      "name": "S3 Tables",
-      "description": "S3 Tables",
-      "command": [
-        "uvx"
-      ],
-      "args": [
-        "awslabs.s3-tables-mcp-server@latest"
-      ],
-      "env_vars": {
-        "AWS_PROFILE": "AI-app-demos-Admin",
-        "AWS_REGION": "us-east-1"
-      },
-      "enabled": true,
-      "auto_connect": false,
-      "category": "General",
-      "added_at": "2025-08-22T15:27:36.110925"
-    },
-    "4a2bc96b-f010-44b9-9b6b-fcff1c39d625": {
-      "name": "AWS Data Processor",
-      "description": "Amazon Data Processing MCP Server",
-      "command": [
-        "uvx"
-      ],
-      "args": [
-        "awslabs.aws-dataprocessing-mcp-server@latest",
-        "--allow-write"
-      ],
-      "env_vars": {
-        "FASTMCP_LOG_LEVEL": "ERROR",
-        "AWS_REGION": "us-east-1"
-      },
-      "enabled": true,
-      "auto_connect": false,
-      "category": "General",
-      "added_at": "2025-08-22T15:27:36.110929"
-    },
     "385e6201-a15f-4dfe-82e8-eecd794f8712": {
-      "name": "Campaign Data",
+      "name": "DynamoDB MCP",
       "description": "DynamoDB Database MCP",
       "command": [
         "uvx"
       ],
       "args": [
-        "awslabs.dynamodb-mcp-server@latest"
+        "awslabs.dynamodb-mcp-server"
       ],
       "env_vars": {
-        "AWS_PROFILE": "AI-app-demos-Admin",
+        "AWS_PROFILE": "your-named-profile",
         "AWS_REGION": "us-east-1",
         "DDB-MCP-READONLY": "true",
         "FASTMCP_LOG_LEVEL": "ERROR"
