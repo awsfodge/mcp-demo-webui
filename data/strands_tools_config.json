@@ -261,12 +261,6 @@
         "module": "use_llm",
         "enabled": false
       },
-      "mcp_client": {
-        "name": "MCP Client",
-        "description": "Model Context Protocol client",
-        "module": "mcp_client",
-        "enabled": false
-      },
       "cron": {
         "name": "Cron Scheduler",
         "description": "Schedule tasks with cron",
