@@ -23,6 +23,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress verbose SocketIO logging
+logging.getLogger('socketio.server').setLevel(logging.WARNING)
+logging.getLogger('engineio.server').setLevel(logging.WARNING)
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
+
 # Create Flask app
 app = Flask(__name__)
 
