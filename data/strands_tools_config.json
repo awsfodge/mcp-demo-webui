@@ -2,15 +2,32 @@
   "enabled_tools": [
     "calculator",
     "file_read",
-    "shell"
+    "file_write",
+    "editor",
+    "shell",
+    "python_repl",
+    "http_request",
+    "current_time"
   ],
   "tool_categories": {
     "File & System": {
-      "file_edit": {
-        "name": "File Edit",
+      "file_read": {
+        "name": "File Read",
+        "description": "Read and parse various file formats with multiple modes",
+        "module": "file_read",
+        "enabled": true
+      },
+      "file_write": {
+        "name": "File Write",
+        "description": "Write content to files",
+        "module": "file_write",
+        "enabled": true
+      },
+      "editor": {
+        "name": "Editor",
         "description": "Edit files with advanced capabilities",
-        "module": "file_edit",
-        "enabled": false
+        "module": "editor",
+        "enabled": true
       },
       "shell": {
         "name": "Shell",
@@ -18,24 +35,31 @@
         "module": "shell",
         "enabled": true
       },
-      "env_var": {
+      "environment": {
         "name": "Environment Variables",
         "description": "Manage environment variables",
-        "module": "env_var",
+        "module": "environment",
         "enabled": false
-      },
-      "desktop_automation": {
-        "name": "Desktop Automation",
-        "description": "Automate desktop interactions",
-        "module": "desktop_automation",
-        "enabled": false,
-        "requires_extra": "desktop"
-      },
-      "file_read": {
-        "name": "File Read",
-        "description": "Read and parse various file formats",
-        "module": "file_read",
+      }
+    },
+    "Code & Development": {
+      "calculator": {
+        "name": "Calculator",
+        "description": "Perform mathematical calculations",
+        "module": "calculator",
         "enabled": true
+      },
+      "python_repl": {
+        "name": "Python REPL",
+        "description": "Execute Python code in an interactive REPL",
+        "module": "python_repl",
+        "enabled": true
+      },
+      "code_interpreter": {
+        "name": "Code Interpreter",
+        "description": "Execute code in an isolated environment",
+        "module": "code_interpreter",
+        "enabled": false
       }
     },
     "Web & Network": {
@@ -43,6 +67,26 @@
         "name": "HTTP Request",
         "description": "Make HTTP requests to APIs and websites",
         "module": "http_request",
+        "enabled": true
+      },
+      "tavily": {
+        "name": "Tavily Search",
+        "description": "Web search using Tavily API",
+        "module": "tavily",
+        "enabled": false,
+        "requires_api_key": true
+      },
+      "exa": {
+        "name": "Exa Search",
+        "description": "Advanced web search using Exa",
+        "module": "exa",
+        "enabled": false,
+        "requires_api_key": true
+      },
+      "rss": {
+        "name": "RSS Feed",
+        "description": "Read and parse RSS feeds",
+        "module": "rss",
         "enabled": false
       },
       "slack": {
@@ -50,94 +94,105 @@
         "description": "Send messages and interact with Slack",
         "module": "slack",
         "enabled": false,
-        "requires_extra": "slack"
-      },
-      "rss_feed": {
-        "name": "RSS Feed",
-        "description": "Read and parse RSS feeds",
-        "module": "rss_feed",
-        "enabled": false
-      },
-      "local_chromium_browser": {
-        "name": "Web Browser",
-        "description": "Control a Chromium browser for web automation",
-        "module": "local_chromium_browser",
-        "enabled": false,
-        "requires_extra": "local_chromium_browser"
+        "requires_api_key": true
       }
     },
-    "Code & Development": {
-      "python_repl": {
-        "name": "Python REPL",
-        "description": "Execute Python code in an interactive REPL",
-        "module": "python_repl",
+    "Utility": {
+      "current_time": {
+        "name": "Current Time",
+        "description": "Get current date and time",
+        "module": "current_time",
+        "enabled": true
+      },
+      "sleep": {
+        "name": "Sleep",
+        "description": "Pause execution for specified duration",
+        "module": "sleep",
         "enabled": false
       },
-      "code_sandbox": {
-        "name": "Code Sandbox",
-        "description": "Execute code in an isolated sandbox environment",
-        "module": "code_sandbox",
-        "enabled": false,
-        "requires_extra": "code_sandbox"
+      "think": {
+        "name": "Think",
+        "description": "Agent reasoning and thought process",
+        "module": "think",
+        "enabled": false
       },
-      "calculator": {
-        "name": "Calculator",
-        "description": "Perform mathematical calculations",
-        "module": "calculator",
-        "enabled": true
+      "stop": {
+        "name": "Stop",
+        "description": "Stop agent execution",
+        "module": "stop",
+        "enabled": false
       }
     },
     "Multi-modal": {
-      "image_generation": {
+      "generate_image": {
         "name": "Image Generation",
         "description": "Generate images using AI models",
-        "module": "image_generation",
+        "module": "generate_image",
         "enabled": false,
-        "requires_extra": "image_generation"
+        "requires_api_key": true
       },
-      "image_analysis": {
-        "name": "Image Analysis",
+      "generate_image_stability": {
+        "name": "Stability AI Image Generation",
+        "description": "Generate images using Stability AI",
+        "module": "generate_image_stability",
+        "enabled": false,
+        "requires_api_key": true
+      },
+      "image_reader": {
+        "name": "Image Reader",
         "description": "Analyze and understand images",
-        "module": "image_analysis",
-        "enabled": false,
-        "requires_extra": "image_analysis"
+        "module": "image_reader",
+        "enabled": false
       },
-      "speech_generation": {
-        "name": "Speech Generation",
+      "speak": {
+        "name": "Text to Speech",
         "description": "Convert text to speech",
-        "module": "speech_generation",
-        "enabled": false,
-        "requires_extra": "speech"
+        "module": "speak",
+        "enabled": false
       },
-      "video_creation": {
-        "name": "Video Creation",
-        "description": "Create and edit videos",
-        "module": "video_creation",
-        "enabled": false,
-        "requires_extra": "video"
-      },
-      "diagram_generation": {
+      "diagram": {
         "name": "Diagram Generation",
         "description": "Create diagrams and visualizations",
-        "module": "diagram_generation",
-        "enabled": false,
-        "requires_extra": "diagrams"
+        "module": "diagram",
+        "enabled": false
+      },
+      "nova_reels": {
+        "name": "Nova Reels",
+        "description": "Create video content",
+        "module": "nova_reels",
+        "enabled": false
       }
     },
     "Memory & RAG": {
-      "semantic_retrieval": {
+      "retrieve": {
         "name": "Semantic Retrieval",
         "description": "Semantic search and retrieval from documents",
-        "module": "semantic_retrieval",
-        "enabled": false,
-        "requires_extra": "retrieval"
+        "module": "retrieve",
+        "enabled": false
       },
-      "agent_memory": {
+      "memory": {
         "name": "Agent Memory",
         "description": "Persistent memory for agents",
-        "module": "agent_memory",
-        "enabled": false,
-        "requires_extra": "memory"
+        "module": "memory",
+        "enabled": false
+      },
+      "mem0_memory": {
+        "name": "Mem0 Memory",
+        "description": "Advanced memory system using Mem0",
+        "module": "mem0_memory",
+        "enabled": false
+      },
+      "agent_core_memory": {
+        "name": "Agent Core Memory",
+        "description": "Core memory system for agents",
+        "module": "agent_core_memory",
+        "enabled": false
+      },
+      "journal": {
+        "name": "Task Journal",
+        "description": "Track and journal agent tasks",
+        "module": "journal",
+        "enabled": false
       }
     },
     "Workflow & Agents": {
@@ -147,16 +202,87 @@
         "module": "handoff_to_user",
         "enabled": false
       },
-      "multi_agent": {
-        "name": "Multi-Agent System",
-        "description": "Coordinate multiple agents for complex tasks",
-        "module": "multi_agent",
+      "swarm": {
+        "name": "Multi-Agent Swarm",
+        "description": "Coordinate multiple agents",
+        "module": "swarm",
         "enabled": false
       },
-      "task_journal": {
-        "name": "Task Journal",
-        "description": "Track and journal agent tasks",
-        "module": "task_journal",
+      "use_agent": {
+        "name": "Use Agent",
+        "description": "Invoke another agent",
+        "module": "use_agent",
+        "enabled": false
+      },
+      "agent_graph": {
+        "name": "Agent Graph",
+        "description": "Agent workflow graphs",
+        "module": "agent_graph",
+        "enabled": false
+      },
+      "workflow": {
+        "name": "Workflow",
+        "description": "Complex workflow management",
+        "module": "workflow",
+        "enabled": false
+      },
+      "batch": {
+        "name": "Batch Processing",
+        "description": "Batch task processing",
+        "module": "batch",
+        "enabled": false
+      }
+    },
+    "Advanced": {
+      "browser": {
+        "name": "Browser Automation",
+        "description": "Control a web browser",
+        "module": "browser",
+        "enabled": false,
+        "requires_extra": "browser"
+      },
+      "use_computer": {
+        "name": "Computer Use",
+        "description": "Control computer interface",
+        "module": "use_computer",
+        "enabled": false,
+        "requires_extra": "computer"
+      },
+      "use_aws": {
+        "name": "AWS Integration",
+        "description": "Interact with AWS services",
+        "module": "use_aws",
+        "enabled": false,
+        "requires_api_key": true
+      },
+      "use_llm": {
+        "name": "Use LLM",
+        "description": "Invoke other LLM models",
+        "module": "use_llm",
+        "enabled": false
+      },
+      "mcp_client": {
+        "name": "MCP Client",
+        "description": "Model Context Protocol client",
+        "module": "mcp_client",
+        "enabled": false
+      },
+      "cron": {
+        "name": "Cron Scheduler",
+        "description": "Schedule tasks with cron",
+        "module": "cron",
+        "enabled": false
+      },
+      "load_tool": {
+        "name": "Dynamic Tool Loader",
+        "description": "Dynamically load tools at runtime",
+        "module": "load_tool",
+        "enabled": false
+      },
+      "a2a_client": {
+        "name": "A2A Client",
+        "description": "Agent to agent communication",
+        "module": "a2a_client",
         "enabled": false
       }
     }
